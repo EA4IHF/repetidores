@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Repetidores</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 1;
+        }
+        #info-box {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 350px;
+            z-index: 2;
+            display: none; /* Hidden by default */
+        }
+        #info-box h3 {
+            margin-top: 0;
+            font-size: 1.2em;
+        }
+        #info-box p {
+            margin: 5px 0;
+            font-size: 0.9em;
+        }
+        #control-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 2;
+            max-width: 250px;
+        }
+        .control-group {
+            margin-bottom: 10px;
+        }
+        .control-group h4 {
+            margin: 0 0 5px 0;
+            font-size: 1em;
+        }
+        .control-group label {
+            display: inline-block;
+            margin-right: 10px;
+            font-size: 0.9em;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="info-box">
+        </div>
+
+    <div id="control-panel">
+        <div class="control-group">
+            <h4>Band:</h4>
+            <label><input type="radio" name="band" value="all" checked> All</label>
+            <label><input type="radio" name="band" value="vhf"> VHF</label>
+            <label><input type="radio" name="band" value="uhf"> UHF</label>
+        </div>
+        <div class="control-group">
+            <h4>Mode:</h4>
+            <label><input type="radio" name="mode" value="all" checked> All</label>
+            <label><input type="radio" name="mode" value="fm"> FM</label>
+            <label><input type="radio" name="mode" value="digital"> Digital</label>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // Data provided by the user, combined into a single JavaScript array
+        const repeaters = [
+            // 145 MHz repeaters
+            { repeater: 'ED1YAB', frequency: '145.725 MHz', offset: '-600 kHz', mode: 'FM', tone: '77.0 Hz', locator: 'IN82PO', affiliation: 'Radio Club Rioja' },
+            { repeater: 'ED1YAC', frequency: '145.750 MHz', offset: '-600 kHz', mode: 'FM', tone: '77.0 Hz', locator: 'IN92AD', affiliation: 'Radio Club Rioja' },
+            { repeater: 'ED1YAD', frequency: '145.625 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN63CO', affiliation: 'URE Coruña' },
+            { repeater: 'ED1YAE', frequency: '145.775 MHz', offset: '-600 kHz', mode: 'FM', tone: '88.5 Hz', locator: 'IN53UK', affiliation: 'Radio Club Fene EA1RKF' },
+            { repeater: 'ED1YAF', frequency: '145.700 MHz', offset: '-600 kHz', mode: 'FM', tone: '71.9 Hz', locator: 'IN70OM', affiliation: 'Club Radioaficionados Abulenses' },
+            { repeater: 'ED1YAG', frequency: '145.650 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN52QQ', affiliation: 'R.C. SAR Santiago' },
+            { repeater: 'ED1YAH', frequency: '145.725 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN63FK', affiliation: 'URE Terracha' },
+            { repeater: 'ED1YAI', frequency: '145.700 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN62JR', affiliation: 'R.C. Lugo' },
+            { repeater: 'ED1YAL', frequency: '145.650 MHz', offset: '-600 kHz', mode: 'FM', tone: '67.0 Hz', locator: 'IN71CM', affiliation: 'URE Zamora' },
+            { repeater: 'ED1YAM', frequency: '145.675 MHz', offset: '-600 kHz', mode: 'FM', tone: '67.0 Hz', locator: 'IN83CK', affiliation: 'URE Cantabria' },
+            { repeater: 'ED1YAN', frequency: '145.775 MHz', offset: '-600 kHz', mode: 'FM', tone: '88.5 Hz', locator: 'IN71QX', affiliation: 'Asociación Palentina de Radioaficionados' },
+            { repeater: 'ED1YAO', frequency: '145.600 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN63GO', affiliation: 'R.C. Costa Lugo' },
+            { repeater: 'ED1YAQ', frequency: '145.700 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN73TA', affiliation: 'Radio Club Radioaficionados Montañeses' },
+            { repeater: 'ED1YAS', frequency: '145.650 MHz', offset: '-600 kHz', mode: 'FM', tone: '123.0 Hz', locator: 'IN83GK', affiliation: 'Radio Club Radioaficionados Montañeses' },
+            { repeater: 'ED1YAW', frequency: '145.675 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN53PG', affiliation: 'Club Bergantiños de Radio' },
+            { repeater: 'ED1YAZ', frequency: '145.675 MHz', offset: '-600 kHz', mode: 'FM-N', tone: '88.5 Hz', locator: 'IN72EU', affiliation: 'URE León' },
+            { repeater: 'ED1YBB', frequency: '145.650 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN73BJ', affiliation: 'URE Oviedo' },
+            { repeater: 'ED1YBC', frequency: '145.775 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN63TI', affiliation: 'URE Asturias' },
+            { repeater: 'ED1YBG', frequency: '145.675 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN52PC', affiliation: 'URE Baixo Miño' },
+            { repeater: 'ED1YBH', frequency: '145.725 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN72CW', affiliation: 'URE Asturias' },
+            { repeater: 'ED1YBI', frequency: '145.750 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN73JJ', affiliation: 'URE Asturias' },
+            { repeater: 'ED1YBJ', frequency: '145.750 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN70WW', affiliation: 'URE Segovia' },
+            { repeater: 'ED1YBK', frequency: '145.775 MHz', offset: '-600 kHz', mode: 'FM', tone: '77.0 Hz', locator: 'IN62CI', affiliation: 'URE Ourense' },
+            { repeater: 'ED1YBM', frequency: '145.600 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN81UW', affiliation: 'URE Soria' },
+            { repeater: 'ED1YBN', frequency: '145.6125 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN73WG', affiliation: 'Sección URE Torrelavega' },
+            { repeater: 'ED1YBO', frequency: '145.6125 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN62RJ', affiliation: 'URE El Bierzo' },
+            { repeater: 'ED1YBT', frequency: '145.625 MHz', offset: '-600 kHz', mode: 'FM', tone: '77.0 Hz', locator: 'IN82JG', affiliation: 'URE Burgos' },
+            { repeater: 'ED1YBU', frequency: '145.725 MHz', offset: '-600 kHz', mode: 'FM', tone: '67.0 Hz', locator: 'IN71QO', affiliation: 'URE Valladolid' },
+            { repeater: 'ED1YBW', frequency: '145.725 MHz', offset: '-600 kHz', mode: 'FM', tone: '77.0 Hz', locator: 'IN52PH', affiliation: 'URE Vigo' },
+            { repeater: 'ED1YBX', frequency: '145.600 MHz', offset: '-600 kHz', mode: 'FM', tone: '88.5 Hz', locator: 'IN52UP', affiliation: 'URE Rías Baixas' },
+            { repeater: 'ED1YBY', frequency: '145.750 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN62IG', affiliation: 'URE Ourense' },
+            { repeater: 'ED1YBZ', frequency: '145.775 MHz', offset: '-600 kHz', mode: 'FM', tone: '77.0 Hz', locator: 'IN60VM', affiliation: 'URE Salamanca' },
+            { repeater: 'ED1YCB', frequency: '145.750 MHz', offset: '-600 kHz', mode: 'FM', tone: '74.4 Hz', locator: 'IN72ST', affiliation: 'Asociación Palentina de Radioaficionados' },
+            { repeater: 'ED1ZBG', frequency: '145.7125 MHz', offset: '-600 kHz', mode: 'C4FM', tone: 'N/A', locator: 'IN62EI', affiliation: 'URE Ourense' },
+            { repeater: 'ED1ZBG_C', frequency: '145.6375 MHz', offset: '-600 kHz', mode: 'D-Star', tone: 'N/A', locator: 'IN62EI', affiliation: 'URE Ourense' },
+            { repeater: 'ED2YAA', frequency: '145.700 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN83ND', affiliation: 'Radio Club Unzueta' },
+            { repeater: 'ED2YAC', frequency: '145.600 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN83RF', affiliation: 'URE Vizcaya' },
+            { repeater: 'ED2YAD', frequency: '145.725 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN83JE', affiliation: 'URE Vizcaya' },
+            { repeater: 'ED2YAF', frequency: '145.625 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN83XF', affiliation: 'URE San Sebastián' },
+            { repeater: 'ED2YAG', frequency: '145.725 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN93BH', affiliation: 'URE San Sebastián' },
+            { repeater: 'ED2YAH', frequency: '145.700 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN91SR', affiliation: 'URE Zaragoza' },
+            { repeater: 'ED2YAI', frequency: '145.625 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN91GJ', affiliation: 'URE Zaragoza' },
+            { repeater: 'ED2YAJ', frequency: '145.650 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN91NP', affiliation: 'URE Zaragoza' },
+            { repeater: 'ED2YAK', frequency: '145.725 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN92RI', affiliation: 'URE Huesca' },
+            { repeater: 'ED2YAL', frequency: '145.600 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN90LC', affiliation: 'URE Teruel' },
+            { repeater: 'ED2YAM', frequency: '145.600 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'JN01EM', affiliation: 'URE Valle del Cinca' },
+            { repeater: 'ED2YAN', frequency: '145.750 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN83PI', affiliation: 'As. Euskobite Elkarte' },
+            { repeater: 'ED2YAP', frequency: '145.650 MHz', offset: '-600 kHz', mode: 'FM', tone: '123.0 Hz', locator: 'IN82QU', affiliation: 'RC Foronda' },
+            { repeater: 'ED2YAQ', frequency: '145.775 MHz', offset: '-600 kHz', mode: 'FM', tone: '123.0 Hz', locator: 'IN82RX', affiliation: 'RC Foronda' },
+            { repeater: 'ED2YAR', frequency: '145.675 MHz', offset: '-600 kHz', mode: 'FM', tone: '77.0 Hz', locator: 'IN93FQ', affiliation: 'URE Navarra' },
+            { repeater: 'ED2YAS', frequency: '145.6875 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN83CH', affiliation: 'Radioaficionados del Bidasoa' },
+            { repeater: 'ED2ZAB', frequency: '145.775 MHz', offset: '-600 kHz', mode: 'D-Star', tone: 'N/A', locator: 'IN83CH', affiliation: 'Radioaficionados del Bidasoa' },
+            { repeater: 'ED3YAB', frequency: '145.700 MHz', offset: '-600 kHz', mode: 'FM', tone: '88.5 Hz', locator: 'JN01VO', affiliation: 'AMIRED' },
+            { repeater: 'ED3YAF', frequency: '145.775 MHz', offset: '-600 kHz', mode: 'FM', tone: '77.0 Hz', locator: 'JN12BE', affiliation: 'R.C. Ripollés' },
+            { repeater: 'ED3YAG', frequency: '145.750 MHz', offset: '-600 kHz', mode: 'FM', tone: '123.0 Hz', locator: 'JN01SU', affiliation: 'Asoc. Radioaf. Solsonés' },
+            { repeater: 'ED3YAH', frequency: '145.675 MHz', offset: '-600 kHz', mode: 'FM', tone: '88.5 Hz', locator: 'JN00ET', affiliation: 'AMIRED' },
+            { repeater: 'ED3YAJ', frequency: '145.600 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'JN11ES', affiliation: 'URE Catalunya' },
+            { repeater: 'ED3YAK', frequency: '145.650 MHz', offset: '-600 kHz', mode: 'D-Star', tone: 'N/A', locator: 'JN11BJ', affiliation: 'URE Barcelona' },
+            { repeater: 'ED3YAL', frequency: '145.725 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'JN01WU', affiliation: 'URE Bages' },
+            { repeater: 'ED3YAP', frequency: '145.700 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'JN12LG', affiliation: 'URE Alt Empordá' },
+            { repeater: 'ED3YAQ', frequency: '145.7375 MHz', offset: '-600 kHz', mode: 'D-Star', tone: 'N/A', locator: 'JN01CT', affiliation: 'Unión Radioaficionados Osona (URO)' },
+            { repeater: 'ED3YAU', frequency: '145.675 MHz', offset: '-600 kHz', mode: 'FM', tone: '77.0 Hz', locator: 'JN02IP', affiliation: 'URE Valle de Arán' },
+            { repeater: 'ED3YAW', frequency: '145.775 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'JN02JA', affiliation: 'Radio Club Lleida' },
+            { repeater: 'ED3YAY', frequency: '145.650 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'JN01HO', affiliation: 'Radio Club Lleida' },
+            { repeater: 'ED3YAZ', frequency: '145.675 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'JN12GA', affiliation: 'URE Gironés' },
+            { repeater: 'ED3YBA', frequency: '145.625 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'JN12ED', affiliation: 'URE Garrotxa' },
+            { repeater: 'ED3YBB', frequency: '145.750 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'JN11MT', affiliation: 'URE Baix Empordà' },
+            { repeater: 'ED3ZAN', frequency: '145.5875 MHz', offset: '-600 kHz', mode: 'DMR', tone: 'N/A', locator: 'JN12LG', affiliation: 'Sección URE Alt Empordá' },
+            { repeater: 'EA4URE-R', frequency: '145.2875 MHz', offset: 'N/A', mode: 'Echolink', tone: '77 Hz', locator: 'IN80DJ', affiliation: 'URE Central' },
+            { repeater: 'ED4YAC', frequency: '145.650 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN80DK', affiliation: 'Sección URE Madrid / Colaboradores Radio Club EIT EA4RCT' },
+            { repeater: 'ED4YAD', frequency: '145.600 MHz', offset: '-600 kHz', mode: 'FM', tone: '82.5 Hz', locator: 'IN80CI', affiliation: 'URE Alcorcón' },
+            { repeater: 'ED4YAE', frequency: '145.675 MHz', offset: '-600 kHz', mode: 'FM', tone: '97.4 Hz', locator: 'IN70WR', affiliation: 'URE Sierra Guadarrama' },
+            { repeater: 'ED4YAG', frequency: '144.800 MHz', offset: 'N/A', mode: 'APRS', tone: 'N/A', locator: 'IN80DJ', affiliation: 'URE Central' },
+            { repeater: 'ED4YAH', frequency: '145.775 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IM88JO', affiliation: 'URE Ciudad Real' },
+            { repeater: 'ED4YAI', frequency: '145.725 MHz', offset: '-600 kHz', mode: 'FM', tone: '85.4 Hz', locator: 'IN79VA', affiliation: 'URE Ciudad Real' },
+            { repeater: 'ED4YAL', frequency: '145.725 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IN80QT', affiliation: 'URE Cifuentes' },
+            { repeater: 'ED4YAM', frequency: '145.750 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IM78WO', affiliation: 'R.C. Puertollano' },
+            { repeater: 'ED4YAO', frequency: '145.675 MHz', offset: '-600 kHz', mode: 'FM', tone: '67.0 Hz', locator: 'IN60XA', affiliation: 'URE Plasencia' },
+            { repeater: 'ED4YAP', frequency: '145.725 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IM69TL', affiliation: 'URE Cáceres' },
+            { repeater: 'ED4YAR', frequency: '145.775 MHz', offset: '-600 kHz', mode: 'FM', tone: '88.5 Hz', locator: 'IM79GA', affiliation: 'RC Francisco de Orellana' },
+            { repeater: 'ED4YAS', frequency: '145.625 MHz', offset: '-600 kHz', mode: 'FM', tone: '88.5 Hz', locator: 'IM68PL', affiliation: 'URE Badajoz' },
+            { repeater: 'ED4YAT', frequency: '145.700 MHz', offset: '-600 kHz', mode: 'FM', tone: '88.5 Hz', locator: 'IM68SU', affiliation: 'URE Mérida' },
+            { repeater: 'ED4YAV', frequency: '145.625 MHz', offset: '-600 kHz', mode: 'FM', tone: '67.0 Hz', locator: 'IN70PD', affiliation: 'URE Talavera de la Reina' },
+            { repeater: 'ED4YAY', frequency: '145.725 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IM79XV', affiliation: 'URE Toledo' },
+            { repeater: 'ED4YAZ', frequency: '145.625 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IM98NS', affiliation: 'URE Cuenca' },
+            { repeater: 'ED4YBA', frequency: '145.750 MHz', offset: '-600 kHz', mode: 'FM', tone: '67.0 Hz', locator: 'IN80WC', affiliation: 'URE Cuenca' },
+            { repeater: 'ED5YAA', frequency: '145.700 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IM88TP', affiliation: 'URAB' },
+            { repeater: 'ED5YAB', frequency: '145.625 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IM97MO', affiliation: 'URE Cartagena' },
+            { repeater: 'ED5YAC', frequency: '145.750 MHz', offset: '-600 kHz', mode: 'FM', tone: '118.8 Hz', locator: 'JM08BU', affiliation: 'Radio Club Montgó Denia' },
+            { repeater: 'ED5YAF', frequency: '145.700 MHz', offset: '-600 kHz', mode: 'FM', tone: '77.0 Hz', locator: 'IM98OL', affiliation: 'URE Elda' },
+            { repeater: 'ED5YAG', frequency: '145.650 MHz', offset: '-600 kHz', mode: 'FM', tone: '88.5 Hz', locator: 'IM98SI', affiliation: 'URE Alicante' },
+            { repeater: 'ED5YAH', frequency: '145.700 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'JN00AC', affiliation: 'URE Castellón' },
+            { repeater: 'ED5YAI', frequency: '145.725 MHz', offset: '-600 kHz', mode: 'FM', tone: '77.0 Hz', locator: 'IM98RP', affiliation: 'URE Alcoy' },
+            { repeater: 'ED5YAK', frequency: '145.600 MHz', offset: '-600 kHz', mode: 'FM', tone: '77.0 Hz', locator: 'IM97FU', affiliation: 'URE Murcia' },
+            { repeater: 'ED5YAN', frequency: '145.650 MHz', offset: '-600 kHz', mode: 'FM', tone: '123 Hz', locator: 'IM98VW', affiliation: 'Radio Club Gandía' },
+            { repeater: 'ED5YAO', frequency: '145.750 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IM98RX', affiliation: 'URE Játiva' },
+            { repeater: 'ED5YAP', frequency: '145.625 MHz', offset: '-600 kHz', mode: 'FM', tone: '88.5 Hz', locator: 'IM99TQ', affiliation: 'URE Valencia' },
+            { repeater: 'ED5YAQ', frequency: '145.775 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IM99NJ', affiliation: 'URE Oeste de Valencia' },
+            { repeater: 'ED5YAR', frequency: '145.750 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IM97NO', affiliation: 'RC Carthago' },
+            { repeater: 'ED5YAT', frequency: '145.625 MHz', offset: '-600 kHz', mode: 'FM', tone: '127.3 Hz', locator: 'IM97FJ', affiliation: 'RC Águilas' },
+            { repeater: 'ED5YAW', frequency: '145.675 MHz', offset: '-600 kHz', mode: 'FM', tone: '123.0 Hz', locator: 'IM88XR', affiliation: 'URE Albacete' },
+            { repeater: 'ED5ZAC', frequency: '145.6875 MHz', offset: '-600 kHz', mode: 'FM/D-Star', tone: 'N/A', locator: 'JM08BU', affiliation: 'RC Denia' },
+            { repeater: 'ED6YAA', frequency: '145.700 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'JM19HO', affiliation: 'Unión Radioaficionados Islas Baleares' },
+            { repeater: 'ED6YAB', frequency: '145.750 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'JM19KM', affiliation: 'URE Palma' },
+            { repeater: 'ED6YAC', frequency: '145.650 MHz', offset: '-600 kHz', mode: 'FM', tone: '88.5 Hz', locator: 'JM19ON', affiliation: 'URE Llevant' },
+            { repeater: 'ED6YAD', frequency: '145.600 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'JM29BX', affiliation: 'URE Menorca' },
+            { repeater: 'ED6YAE', frequency: '145.675 MHz', offset: '-600 kHz', mode: 'FM', tone: '173.8 Hz', locator: 'JM08PV', affiliation: 'URE Ibiza' },
+            { repeater: 'ED6YAF', frequency: '145.7125 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'JM19JR', affiliation: 'URE Palma' },
+            { repeater: 'ED6YAG', frequency: '145.775 MHz', offset: '-600 kHz', mode: 'FM', tone: '88.5 Hz', locator: 'JM19ON', affiliation: 'URE Llevant' },
+            { repeater: 'ED6ZAC', frequency: '145.625 MHz', offset: '-600 kHz', mode: 'D-Star', tone: 'N/A', locator: 'JM19IR', affiliation: 'Digigrup' },
+            { repeater: 'ED7YAA', frequency: '145.775 MHz', offset: '-600 kHz', mode: 'FM', tone: '82.5 Hz', locator: 'IM76DT', affiliation: 'Andalucia Unida por la Radio (AUR)' },
+            { repeater: 'ED7YAC', frequency: '145.675 MHz', offset: '-600 kHz', mode: 'FM', tone: '77.0 Hz', locator: 'IM77OX', affiliation: 'URE Córdoba' },
+            { repeater: 'ED7YAD', frequency: '145.700 MHz', offset: '-600 kHz', mode: 'FM', tone: '82.5 Hz', locator: 'IM76QO', affiliation: 'URE Málaga' },
+            { repeater: 'ED7YAF', frequency: '145.750 MHz', offset: '-600 kHz', mode: 'FM', tone: '82.5 Hz', locator: 'IM76JL', affiliation: 'URE Estepona' },
+            { repeater: 'ED7YAG', frequency: '145.725 MHz', offset: '-600 kHz', mode: 'FM', tone: '82.5 Hz', locator: 'IM86OU', affiliation: 'URE Almería' },
+            { repeater: 'ED7YAH', frequency: '145.675 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IM87SF', affiliation: 'URE Cuanca del Almanzora' },
+            { repeater: 'ED7YAJ', frequency: '145.650 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IM86SU', affiliation: 'URE Almería' },
+            { repeater: 'ED7YAK', frequency: '145.675 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IM67OV', affiliation: 'URE Huelva' },
+            { repeater: 'ED7YAN', frequency: '145.625 MHz', offset: '-600 kHz', mode: 'FM', tone: '88.5 Hz', locator: 'IM87HB', affiliation: 'URE Granada' },
+            { repeater: 'ED7YAO', frequency: '145.725 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IM76RW', affiliation: 'R.C. Romeo Alfa Charlie' },
+            { repeater: 'ED7YAP', frequency: '145.650 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IM77AJ', affiliation: 'R.C. Sevilla' },
+            { repeater: 'ED7YAQ', frequency: '145.700 MHz', offset: '-600 kHz', mode: 'FM', tone: '77.0 Hz', locator: 'IM77EU', affiliation: 'R.C. Sevilla' },
+            { repeater: 'ED7YAS', frequency: '145.700 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IM87ON', affiliation: 'URE Baza' },
+            { repeater: 'ED7YAT', frequency: '145.650 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IM87CP', affiliation: 'URE Jaén' },
+            { repeater: 'ED7YAU', frequency: '144.800 MHz', offset: 'N/A', mode: 'APRS', tone: 'N/A', locator: 'IM76AT', affiliation: 'URE San Fernando' },
+            { repeater: 'ED8YAA', frequency: '145.600 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IL39FC', affiliation: 'URE Arrecife' },
+            { repeater: 'ED8YAC', frequency: '145.700 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IL07XR', affiliation: 'URE Aridane' },
+            { repeater: 'ED8YAD', frequency: '145.775 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IL28HD', affiliation: 'URE Las Palmas' },
+            { repeater: 'ED8YAE', frequency: '145.625 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IL27FW', affiliation: 'URE Las Palmas' },
+            { repeater: 'ED8YAF', frequency: '145.675 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IL38BM', affiliation: 'URE Fuerteventura' },
+            { repeater: 'ED8YAG', frequency: '145.750 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IL18UM', affiliation: 'URE S.C. Tenerife - La Laguna' },
+            { repeater: 'ED8YAH', frequency: '145.650 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IL18CP', affiliation: 'URE S.C. La Palma' },
+            { repeater: 'ED8YAI', frequency: '145.725 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IL18JC', affiliation: 'URE La Gomera' },
+            { repeater: 'ED9YAA', frequency: '145.775 MHz', offset: '-600 kHz', mode: 'FM', tone: 'N/A', locator: 'IM85MH', affiliation: 'URE Melilla' },
+            // 439 MHz repeaters
+            { repeater: 'EC2E', frequency: '439.350 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IN92FQ', affiliation: 'URE Navarra' },
+            { repeater: 'ED1YAK', frequency: '438.725 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IN53VL', affiliation: 'URE El Ferrol' },
+            { repeater: 'ED1YAN', frequency: '438.775 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '88.5 Hz', locator: 'IN71QX', affiliation: 'Asociación Palentina de Radioaficionados' },
+            { repeater: 'ED1YAP', frequency: '438.775 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IN62BO', affiliation: 'R.C. Lugo' },
+            { repeater: 'ED1YAT', frequency: '438.650 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IN83AJ', affiliation: 'R.C. Radioaficionados Montañeses' },
+            { repeater: 'ED1YAU', frequency: '438.850 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IN73TA', affiliation: 'R.C. Radioaficionados Montañeses' },
+            { repeater: 'ED1YAV', frequency: '438.700 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IN70EX', affiliation: 'Grupo Radiopaquete Salamanca' },
+            { repeater: 'ED1YAX', frequency: '438.900 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '77.0 Hz', locator: 'IN63AK', affiliation: 'RC Fene' },
+            { repeater: 'ED1YAY', frequency: '438.800 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IN53XH', affiliation: 'URE A Coruña' },
+            { repeater: 'ED1YAZ', frequency: '439.225 MHz', offset: '-7.6 MHz', mode: 'FM-N', tone: '88.5 Hz', locator: 'IN72EU', affiliation: 'URE León' },
+            { repeater: 'ED1YBA', frequency: '438.850 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '71.9 Hz', locator: 'IN70PP', affiliation: 'Club de Radioaficionados Abulenses' },
+            { repeater: 'ED1YBD', frequency: '438.975 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '100.0 Hz', locator: 'IN63SD', affiliation: 'URE Narcea' },
+            { repeater: 'ED1YBE', frequency: '439.125 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '88.5 Hz', locator: 'IN63QL', affiliation: 'URE Asturias' },
+            { repeater: 'ED1YBF', frequency: '439.075 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IN73EK', affiliation: 'URE Asturias' },
+            { repeater: 'ED1YBL-R', frequency: '438.750 MHz', offset: '-7.6 MHz', mode: 'Echolink', tone: '77.0 Hz', locator: 'IN62EI', affiliation: 'URE Ourense' },
+            { repeater: 'ED1YBM', frequency: '439.300 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '71.9 Hz', locator: 'IN81UW', affiliation: 'URE Soria' },
+            { repeater: 'ED1YBO', frequency: '439.175 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IN62RJ', affiliation: 'URE El Bierzo' },
+            { repeater: 'ED1YBP', frequency: '439.000 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '77.0 Hz', locator: 'IN52PO', affiliation: 'RC Fene' },
+            { repeater: 'ED1YBS', frequency: '438.875 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '88.5 Hz', locator: 'IN52QJ', affiliation: 'URE Rías Baixas' },
+            { repeater: 'ED1YBV', frequency: '439.050 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IN71PP', affiliation: 'URE Valladolid' },
+            { repeater: 'ED1YCD', frequency: '439.400 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IN82MQ', affiliation: 'URE Miranda de Ebro' },
+            { repeater: 'ED1YCF', frequency: '439.025 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IN73OJ', affiliation: 'CT URE Asturias' },
+            { repeater: 'ED1ZAB', frequency: '438.300 MHz', offset: '-7.6 MHz', mode: 'D-Star', tone: 'N/A', locator: 'IN70DW', affiliation: 'URE Salamanca' },
+            { repeater: 'ED1ZAJ', frequency: '438.325 MHz', offset: '-7.6 MHz', mode: 'D-Star', tone: 'N/A', locator: 'IN61GV', affiliation: 'Comunicaciones Digitales de Galicia' },
+            { repeater: 'ED1ZAK', frequency: '438.650 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '131.8 Hz', locator: 'IN82EH', affiliation: 'Burgos HAM Radio' },
+            { repeater: 'ED1ZAT', frequency: '438.325 MHz', offset: '-7.6 MHz', mode: 'D-Star', tone: 'N/A', locator: 'IN52TQ', affiliation: 'Radio Club Estrada - EA1RKE' },
+            { repeater: 'ED1ZAV', frequency: '438.625 MHz', offset: '-7.6 MHz', mode: 'C4FM', tone: 'N/A', locator: 'IN73CH', affiliation: 'CTCA URE Asturias' },
+            { repeater: 'ED1ZAW', frequency: '438.400 MHz', offset: '-7.6 MHz', mode: 'DMR', tone: 'N/A', locator: 'IN72JU', affiliation: 'URE León' },
+            { repeater: 'ED1ZAX', frequency: '438.525 MHz', offset: '-7.6 MHz', mode: 'DMR', tone: 'N/A', locator: 'IN52PO', affiliation: 'Radio Club Fene (EA1RKF)' },
+            { repeater: 'ED1ZBG', frequency: '438.550 MHz', offset: '-7.6 MHz', mode: 'DMR', tone: 'N/A', locator: 'IN62EI', affiliation: 'URE Ourense' },
+            { repeater: 'ED1ZBH', frequency: '438.575 MHz', offset: '-7.6 MHz', mode: 'DMR', tone: 'N/A', locator: 'IN62IG', affiliation: 'URE Ourense' },
+            { repeater: 'ED1ZBI', frequency: '438.500 MHz', offset: '-7.6 MHz', mode: 'DMR', tone: 'N/A', locator: 'IN62CI', affiliation: 'URE Ourense' },
+            { repeater: 'ED1ZBI_B', frequency: '438.250 MHz', offset: '-7.6 MHz', mode: 'D-Star', tone: 'N/A', locator: 'IN62CI', affiliation: 'URE Ourense' },
+            { repeater: 'ED1ZBJ', frequency: '438.225 MHz', offset: '-7.6 MHz', mode: 'DMR', tone: 'N/A', locator: 'IN72FN', affiliation: 'URE León' },
+            { repeater: 'ED2YAB', frequency: '438.700 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IN83ND', affiliation: 'R.C. Unzueta de Laudio' },
+            { repeater: 'ED2YAE', frequency: '439.000 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '77.0 Hz', locator: 'IN83RF', affiliation: 'URE Vizcaya' },
+            { repeater: 'ED2YAG', frequency: '438.925 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IN93BH', affiliation: 'URE San Sebastián' },
+            { repeater: 'ED2YAH', frequency: '438.700 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IN91SR', affiliation: 'URE Zaragoza' },
+            { repeater: 'ED2YAJ', frequency: '438.650 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IN91NP', affiliation: 'URE Zaragoza' },
+            { repeater: 'ED2YAL', frequency: '439.325 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '71.9 Hz', locator: 'IN90LC', affiliation: 'URE Teruel' },
+            { repeater: 'ED2YAN', frequency: '438.200 MHz', offset: '-7.6 MHz', mode: 'D-Star', tone: 'N/A', locator: 'IN83PI', affiliation: 'As. Euskobite Elkarte' },
+            { repeater: 'ED2YAO', frequency: '438.400 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IN83MF', affiliation: 'As. Euskobite Elkarte' },
+            { repeater: 'ED2YAP', frequency: '438.675 MHz', offset: '-7.6 MHz', mode: 'D-Star', tone: 'N/A', locator: 'IN82QU', affiliation: 'RC Foronda' },
+            { repeater: 'ED2YAX', frequency: '439.000 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '123.0 Hz', locator: 'JN01EM', affiliation: 'RadioClub Fragatí' },
+            { repeater: 'ED2ZAA', frequency: '438.350 MHz', offset: '-7.6 MHz', mode: 'D-Star', tone: 'N/A', locator: 'IN91NP', affiliation: 'URE Zaragoza' },
+            { repeater: 'ED3YAB', frequency: '145.700 MHz', offset: '-600 kHz', mode: 'FM', tone: '88.5 Hz', locator: 'JN01VO', affiliation: 'AMIRED' },
+            { repeater: 'ED3YAC', frequency: '438.800 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '110.9 Hz', locator: 'JN11AQ', affiliation: 'R.C. Castellar' },
+            { repeater: 'ED3YAD', frequency: '438.975 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'JN11BN', affiliation: 'Radio Club Sabadell' },
+            { repeater: 'ED3YAE', frequency: '438.675 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'JN01SU', affiliation: 'Asociación de Radioaficionados Solsonés' },
+            { repeater: 'ED3YAH', frequency: '439.275 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '88.5 Hz', locator: 'JN00ET', affiliation: 'AMIRED' },
+            { repeater: 'ED3YAI', frequency: '439.375 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '88.5 Hz', locator: 'JN02WH', affiliation: 'AMIRED' },
+            { repeater: 'ED3YAM', frequency: '438.775 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '88.5 Hz', locator: 'JN11EW', affiliation: 'URE Osona' },
+            { repeater: 'ED3YAN', frequency: '439.125 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '114.8 Hz', locator: 'JN11BJ', affiliation: 'URE Barcelona' },
+            { repeater: 'ED3YAO', frequency: '438.875 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '123.0 Hz', locator: 'JN11BI', affiliation: 'R.C. Quijotes Internacionales' },
+            { repeater: 'ED3YAP', frequency: '438.900 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '107.2 Hz', locator: 'JN12LG', affiliation: 'Sección URE Alt Empordá' },
+            { repeater: 'ED3YAS', frequency: '438.950 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'JN11JP', affiliation: 'URE La Selva' },
+            { repeater: 'ED3YAT', frequency: '438.925 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '79.7 Hz', locator: 'JN11CK', affiliation: 'URE Badalona' },
+            { repeater: 'ED3YAV', frequency: '438.750 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'JN02JA', affiliation: 'R.C. Lleida' },
+            { repeater: 'ED3YBC', frequency: '438.700 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'JN11MU', affiliation: 'URE Baix Empordà' },
+            { repeater: 'ED3YBH', frequency: '438.725 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '77.0 Hz', locator: 'JN02VC', affiliation: 'Associació de Radioaficionats Club La Baells' },
+            { repeater: 'ED4YAA', frequency: '438.700 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '77.0 Hz', locator: 'IM89EF', affiliation: 'URE Ciudad Real' },
+            { repeater: 'ED4YAB', frequency: '438.650 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IN80CH', affiliation: 'URE Leganés' },
+            { repeater: 'ED4YAF', frequency: '439.025 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IN90CE', affiliation: 'URE Cuenca' },
+            { repeater: 'ED4YAI', frequency: '439.300 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IN79VA', affiliation: 'URE Ciudad Real' },
+            { repeater: 'ED4YAJ', frequency: '439.000 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '67.0 Hz', locator: 'IN80HK', affiliation: 'Sección URE Jarama' },
+            { repeater: 'ED4YAK', frequency: '439.200 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '82.5 Hz', locator: 'IN80FK', affiliation: 'Radio Club Henares' },
+            { repeater: 'ED4YAN', frequency: '438.950 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '100 Hz', locator: 'IN80AS', affiliation: 'URE Sección Local de Madrid' },
+            { repeater: 'ED4YAQ', frequency: '439.200 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '88.5 Hz', locator: 'IM69WF', affiliation: 'RC Francisco de Orellana' },
+            { repeater: 'ED4YAR', frequency: '439.300 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '88.5 Hz', locator: 'IM79GA', affiliation: 'RC Francisco de Orellana' },
+            { repeater: 'ED4YAU', frequency: '439.425 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IN80WC', affiliation: 'URE Cuenca' },
+            { repeater: 'ED4YAV', frequency: '438.750 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '67.0 Hz', locator: 'IN70PD', affiliation: 'URE Talavera de la Reina' },
+            { repeater: 'ED4YAW', frequency: '438.900 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IN70WR', affiliation: 'URE Sierra de Guadarrama' },
+            { repeater: 'ED4YAY', frequency: '438.725 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IM79XU', affiliation: 'URE Toledo' },
+            { repeater: 'ED4ZAA', frequency: '438.475 MHz', offset: '-7.6 MHz', mode: 'DMR', tone: 'N/A', locator: 'IN80EV', affiliation: 'URE Alcorcón' },
+            { repeater: 'ED4ZAB', frequency: '438.325 MHz', offset: '-7.6 MHz', mode: 'DMR', tone: 'N/A', locator: 'IM79DR', affiliation: 'URE Alcorcón' },
+            { repeater: 'ED4ZAD', frequency: '438.375 MHz', offset: '-7.6 MHz', mode: 'D-Star', tone: 'N/A', locator: 'IN80WC', affiliation: 'URE Cuenca' },
+            { repeater: 'ED4ZAG', frequency: '438.300 MHz', offset: '-7.6 MHz', mode: 'DMR', tone: 'N/A', locator: 'IN80DH', affiliation: 'URE Alcorcón' },
+            { repeater: 'ED4ZAH', frequency: '438.350 MHz', offset: '-7.6 MHz', mode: 'D-Star', tone: 'N/A', locator: 'IN70WR', affiliation: 'URE Sierra de Guadarrama' },
+            { repeater: 'ED4ZAH', frequency: '438.325 MHz', offset: '-7.6 MHz', mode: 'DMR', tone: 'N/A', locator: 'IN70WR', affiliation: 'URE Sierra de Guadarrama' },
+            { repeater: 'ED4ZAH', frequency: '438.375 MHz', offset: '-7.6 MHz', mode: 'C4FM', tone: 'N/A', locator: 'IN70WR', affiliation: 'URE Sierra de Guadarrama' },
+            { repeater: 'ED5YAA', frequency: '439.100 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IM88TP', affiliation: 'Unión de Radioaficionados de Albacete' },
+            { repeater: 'ED5YAD', frequency: '438.800 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'JM08BU', affiliation: 'R.C. Montgó' },
+            { repeater: 'ED5YAE', frequency: '438.725 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '79.7 Hz', locator: 'IM98WR', affiliation: 'URE Marina Baixa' },
+            { repeater: 'ED5YAF', frequency: '439.000 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '77.0 Hz', locator: 'IM98OL', affiliation: 'URE Elda' },
+            { repeater: 'ED5YAG', frequency: '439.400 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IM98SI', affiliation: 'URE Alicante' },
+            { repeater: 'ED5YAJ', frequency: '439.425 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '88.5 Hz', locator: 'IM99TQ', affiliation: 'URE Valencia' },
+            { repeater: 'ED5YAL', frequency: '438.650 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '77.0 Hz', locator: 'IM97FU', affiliation: 'URE Murcia' },
+            { repeater: 'ED5YAM', frequency: '439.050 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IM98WR', affiliation: 'RC Montgó' },
+            { repeater: 'ED5YAS', frequency: '438.825 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '71.9 Hz', locator: 'JN00BO', affiliation: 'URE Maestrazgo' },
+            { repeater: 'ED5YAU', frequency: '438.700 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IN98WM', affiliation: 'URE Benidorm-Marina Baixa' },
+            { repeater: 'ED5YAV', frequency: '439.075 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'JM08BT', affiliation: 'RC Montgó' },
+            { repeater: 'ED5YAY', frequency: '438.775 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '77.0 Hz', locator: 'IM99NJ', affiliation: 'URE Oeste de Valencia' },
+            { repeater: 'ED5YBA', frequency: '439.150 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '77.0 Hz', locator: 'IM98TK', affiliation: 'Radioclub El Campello - EA5RCK' },
+            { repeater: 'ED5YBC', frequency: '438.875 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '77.0 Hz', locator: 'IM98RJ', affiliation: 'URE San Vicente del Raspeig' },
+            { repeater: 'ED5ZAB', frequency: '438.200 MHz', offset: '-7.6 MHz', mode: 'D-Star', tone: 'N/A', locator: 'IM99TQ', affiliation: 'URE Valencia' },
+            { repeater: 'ED5ZAC', frequency: '438.300 MHz', offset: '-7.6 MHz', mode: 'D-Star', tone: 'N/A', locator: 'JM08BU', affiliation: 'RC Denia' },
+            { repeater: 'ED6YAH', frequency: '439.200 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'JM19LM', affiliation: 'URE Pla de Mallorca' },
+            { repeater: 'ED6ZAA', frequency: '438.250 MHz', offset: '-7.6 MHz', mode: 'D-Star', tone: 'N/A', locator: 'JM19OK', affiliation: 'URE Pla de Mallorca' },
+            { repeater: 'ED6ZAB', frequency: '438.450 MHz', offset: '-7.6 MHz', mode: 'D-Star', tone: 'N/A', locator: 'JM19KM', affiliation: 'URE Pla de Mallorca' },
+            { repeater: 'ED7YAB', frequency: '439.425 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '77.0 Hz', locator: 'IM77OX', affiliation: 'URE Córdoba' },
+            { repeater: 'ED7YAE', frequency: '438.650 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '82.5 Hz', locator: 'IM76QO', affiliation: 'URE Málaga' },
+            { repeater: 'ED7YAL', frequency: '438.650 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '71.9 Hz', locator: 'IM87FR', affiliation: 'URE Jaen' },
+            { repeater: 'ED7YAM', frequency: '438.925 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IM77OX', affiliation: 'URE Córdoba' },
+            { repeater: 'ED7YAN', frequency: '438.900 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '88.5 Hz', locator: 'IM87HB', affiliation: 'URE Granada' },
+            { repeater: 'ED7YAR', frequency: '439.400 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IM77EU', affiliation: 'Radio Club Sevilla' },
+            { repeater: 'ED7YAU', frequency: '439.350 MHz', offset: '-7.6 MHz', mode: 'FM', tone: 'N/A', locator: 'IM76AT', affiliation: 'URE San Fernando' },
+            { repeater: 'ED7YAV', frequency: '438.950 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '77.0 Hz', locator: 'IM66VM', affiliation: 'URE San Fernando' },
+            { repeater: 'ED7YBC', frequency: '439.025 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '88.5 Hz', locator: 'IM78CB', affiliation: 'URE Sevilla' },
+            { repeater: 'ED7ZAD', frequency: '438.525 MHz', offset: '-7.6 MHz', mode: 'D-Star', tone: 'N/A', locator: 'IM77OW', affiliation: 'URE Córdoba' },
+            { repeater: 'ED7ZAE', frequency: '438.300 MHz', offset: '-7.6 MHz', mode: 'D-Star', tone: 'N/A', locator: 'IM87ED', affiliation: 'URE Granada' },
+            { repeater: 'ED7ZAH', frequency: '438.425 MHz', offset: '-7.6 MHz', mode: 'DMR', tone: 'N/A', locator: 'IM86SU', affiliation: 'URE Almería' },
+            { repeater: 'ED7ZAI', frequency: '439.000 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '88.5 Hz', locator: 'IM77AJ', affiliation: 'URE Sevilla' },
+            { repeater: 'ED7ZAJ', frequency: '438.300 MHz', offset: '-7.6 MHz', mode: 'D-Star', tone: 'N/A', locator: 'IM76AT', affiliation: 'URE San Fernando' },
+            { repeater: 'ED7ZAL', frequency: '438.425 MHz', offset: '-7.6 MHz', mode: 'DMR', tone: 'N/A', locator: 'IM67XI', affiliation: 'URE Sevilla' },
+            { repeater: 'ED7ZAM', frequency: '438.500 MHz', offset: '-7.6 MHz', mode: 'C4FM', tone: 'N/A', locator: 'IM66WM', affiliation: 'URE San Fernando' },
+            { repeater: 'ED8YAB', frequency: '439.000 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '79.7 Hz', locator: 'IL18CP', affiliation: 'Unión Radioaficionados Aridane' },
+            { repeater: 'ED8YAM', frequency: '438.800 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '79.7 Hz', locator: 'IL28ED', affiliation: 'URE Las Palmas' },
+            { repeater: 'ED8YAN', frequency: '439.150 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '79.7 Hz', locator: 'IL18SI', affiliation: 'URE Valle de la Orotava' },
+            { repeater: 'ED8YAO', frequency: '439.300 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '79.7 Hz', locator: 'IL18QJ', affiliation: 'URE Valle de la Orotava' },
+            { repeater: 'ED8ZAB', frequency: '438.4625 MHz', offset: '-7.6 MHz', mode: 'D-Star', tone: 'N/A', locator: 'IL27FX', affiliation: 'RC Tuhoco de Velhoco' },
+            { repeater: 'ED9YAB', frequency: '438.675 MHz', offset: '-7.6 MHz', mode: 'FM', tone: '82.5 Hz', locator: 'IM75IV', affiliation: 'URE Sección Ceuta' },
+        ];
+
+        // Maidenhead Locator to Latitude/Longitude converter
+        // This function calculates the center of the given grid square.
+        function locatorToLatLon(locator) {
+            if (!locator || locator.length < 4) {
+                console.error("Invalid locator format:", locator);
+                return null;
+            }
+
+            const c1 = locator.charCodeAt(0) - 'A'.charCodeAt(0);
+            const c2 = locator.charCodeAt(1) - 'A'.charCodeAt(0);
+            const c3 = locator.charCodeAt(2) - '0'.charCodeAt(0);
+            const c4 = locator.charCodeAt(3) - '0'.charCodeAt(0);
+
+            let lon = -180 + c1 * 20 + c3 * 2;
+            let lat = -90 + c2 * 10 + c4 * 1;
+
+            if (locator.length >= 6) {
+                const c5 = locator.charCodeAt(4) - 'A'.charCodeAt(0);
+                const c6 = locator.charCodeAt(5) - 'A'.charCodeAt(0);
+                lon += c5 * (2/24);
+                lat += c6 * (1/24);
+            }
+            
+            // Adjust to center of the grid square
+            const squareSizeLon = locator.length >= 6 ? (2/24) : 2;
+            const squareSizeLat = locator.length >= 6 ? (1/24) : 1;
+            lon += squareSizeLon / 2;
+            lat += squareSizeLat / 2;
+
+            return [lat, lon];
+        }
+
+        // Initialize the map and a layer group for markers
+        const map = L.map('map').setView([40.4168, -3.7038], 6);
+        const markersLayer = L.layerGroup().addTo(map);
+
+        // Add the OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+
+        const infoBox = document.getElementById('info-box');
+
+        // Function to update the info box with repeater details
+        function displayRepeaterInfo(repeater) {
+            infoBox.innerHTML = `
+                <h3>${repeater.repeater}</h3>
+                <p><strong>Frequency:</strong> ${repeater.frequency}</p>
+                <p><strong>Offset:</strong> ${repeater.offset}</p>
+                <p><strong>Mode:</strong> ${repeater.mode}</p>
+                <p><strong>Tone:</strong> ${repeater.tone}</p>
+                <p><strong>Locator:</strong> ${repeater.locator}</p>
+                <p><strong>Affiliation:</strong> ${repeater.affiliation}</p>
+            `;
+        }
+
+        // --- NEW: Define custom marker icons for different colors ---
+        const digitalModes = ['D-Star', 'C4FM', 'DMR'];
+
+        const blueIcon = new L.Icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        const greenIcon = new L.Icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        const orangeIcon = new L.Icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+        
+        // This function filters the repeaters and redraws the markers on the map
+        function updateMap() {
+            // Get the selected values from the radio buttons
+            const selectedBand = document.querySelector('input[name="band"]:checked').value;
+            const selectedMode = document.querySelector('input[name="mode"]:checked').value;
+            
+            // Clear existing markers from the layer group
+            markersLayer.clearLayers();
+
+            // Filter the repeaters array based on the selections
+            const filteredRepeaters = repeaters.filter(repeater => {
+                const isVHF = repeater.frequency.startsWith('14');
+                const isUHF = repeater.frequency.startsWith('43');
+                const isDigital = digitalModes.some(m => repeater.mode.includes(m));
+
+                const bandMatch = selectedBand === 'all' || 
+                                  (selectedBand === 'vhf' && isVHF) || 
+                                  (selectedBand === 'uhf' && isUHF);
+
+                const modeMatch = selectedMode === 'all' || 
+                                  (selectedMode === 'fm' && !isDigital) || 
+                                  (selectedMode === 'digital' && isDigital);
+                                  
+                return bandMatch && modeMatch;
+            });
+
+            // Loop through the filtered repeaters and add markers to the map
+            filteredRepeaters.forEach(repeater => {
+                const latlng = locatorToLatLon(repeater.locator);
+                
+                if (latlng) {
+                    // --- NEW: Select the correct icon based on repeater properties ---
+                    let iconToUse = blueIcon; // Default to blue for VHF
+                    if (digitalModes.some(m => repeater.mode.includes(m))) {
+                        iconToUse = greenIcon;
+                    } else if (repeater.frequency.startsWith('43')) {
+                        iconToUse = orangeIcon;
+                    }
+                    
+                    const marker = L.marker(latlng, { icon: iconToUse }).addTo(markersLayer)
+                        .bindTooltip(repeater.repeater, { permanent: false, direction: 'top' });
+
+                    marker.on('mouseover', function (e) {
+                        displayRepeaterInfo(repeater);
+                        infoBox.style.display = 'block';
+                    });
+                    marker.on('mouseout', function (e) {
+                        infoBox.style.display = 'none';
+                    });
+                }
+            });
+        }
+
+        // Attach event listeners to the radio buttons to trigger map updates
+        document.querySelectorAll('input[name="band"], input[name="mode"]').forEach(input => {
+            input.addEventListener('change', updateMap);
+        });
+
+        // Initial map render
+        updateMap();
+
+    </script>
+</body>
+</html>
